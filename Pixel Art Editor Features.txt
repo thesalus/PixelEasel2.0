@@ -1,0 +1,22 @@
+Pixel Art Editor
+- PNG and GIF support
+- Toools
+	- pencil/scalable brush
+	- eraser
+	- fill
+	- line
+- Layer support
+	- transparency
+- Palette support
+	- merge colours
+	- colour picker
+- Tileset editing
+	- parses a file for tiles of uniform size
+	- smart parsing for guessing the tile size
+	- per-tile palettes + global palette
+- Live previews
+	- scaled preview
+	- tiled preview
+	- tileset (structured preview)
+	- animations
+- Grid

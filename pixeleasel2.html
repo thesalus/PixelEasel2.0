@@ -1,0 +1,120 @@
+<html>
+<head>
+<title>PixelEasel 2.0</title>
+<script src="image-common.js"></script>
+<script src="gif.js"></script>
+<style type="text/css">
+	html, body { margin: 0; padding: 0; }
+	header { width: 100%; height: 32px; border-bottom: solid 1px #91B7C1; background: -webkit-linear-gradient(top, #FFFFFF 0%, #B7C4CC 100%); color: #535C82; }
+		header h1 { text-shadow: -2px 0px #FFFFFF; font-family: Arial; font-size: 1.4em; padding: 3px; }
+	.icon { width: 20px; height: 20px; padding: 2px; }
+	#application { padding: 0.5%; top: 32px; position: absolute; bottom: 0px; left: 0px; right: 0px; }
+	#canvas { bottom: 10px; position: fixed; left: 10px; right: 10px; top: 90px; }
+	#application nav { padding: 3px 0; }
+	#dialog-overlay { z-index: 5; width: 100%; height: 100%; top: 0; left: 0; position: absolute; background: #DDDDDD; opacity: 0.9; display: none; }
+	.dialog { z-index: 10; border: solid 1px #AAA; width: 30%; height: 60%; top: 19%; left: 35%; position: absolute; background: white; border-radius: 5px; padding: 1%; display: none; }
+</style>
+</head>
+<body>
+<header>
+<h1>PixelEasel 2.0</h1>
+</header>
+<div id="application">
+<nav>
+	<button id="new-image"><img src="images/page_white.png" class="icon"></button>
+	<button id="open-image"><img src="images/folder.png" class="icon"></button>
+</nav>
+<canvas id="canvas" style="border: solid 1px black;"></canvas>
+</div>
+<div id="dialog-overlay"></div>
+<div id="open-dialog" class="dialog">
+	<input type="file" id="files" name="files[]" accept="image/gif" />
+</div>
+
+</body>
+<script type="text/JavaScript">
+	var ERR_ILLEGAL_FILE = "Illegal file";
+
+	function showDialog(id) {
+		document.getElementById(id).style["display"] = "block";
+		document.getElementById('dialog-overlay').style["display"] = "block";
+		document.getElementById('dialog-overlay').addEventListener('click', function() {
+			hideDialog(id); 
+			this.removeEventListener('click', arguments.callee, false);
+		}, false);
+	}
+	function hideDialog(id) {
+		document.getElementById(id).style["display"] = "none";
+		document.getElementById('dialog-overlay').style["display"] = "none";
+	}
+
+	// Credits:
+	// Reading files: http://www.html5rocks.com/en/tutorials/file/dndfiles/
+	function handleFileSelect(event) {
+		var files = event.target.files;
+		if (!files.length) {
+			alert('Please select a file!');
+			return;
+		}
+
+		var file = files[0];
+		doFile(file);
+	}
+
+	function doFile(file) {
+		if (!file.type.match('image.*')) {
+			alert('Please select an image file!');
+			throw ERR_ILLEGAL_FILE;
+		}
+		
+		var reader = new FileReader();
+			
+		reader.onloadend = function(event) {
+			if (event.target.readyState == FileReader.DONE) {
+				hideDialog("open-dialog");
+				var gif = new GIF(event.target.result);
+				draw(new GIFWrapper(gif));
+			}
+		};
+
+		reader.readAsBinaryString(file);
+	}
+	
+	function draw(image) {
+		var c = document.getElementById("canvas");
+		var context = c.getContext("2d");
+
+		context.clearRect (0, 0, c.width, c.height);
+		var scale = 10;
+		var x_offset = (c.width - scale * image.width) / 2;
+		var y_offset = (c.height - scale * image.height) / 2;
+		for (var x = 0; x < image.width; x++) {
+			for (var y = 0; y < image.height; y++) {
+				context.fillStyle=image.getHex(x, y);
+				context.fillRect(x_offset + x*scale, y_offset + y*scale, scale, scale);
+			}
+		}
+	}
+	
+	function viewport() {
+		var e = window
+		, a = 'inner';
+		if ( !( 'innerWidth' in window ) ) {
+			a = 'client';
+			e = document.documentElement || document.body;
+		}
+		return { width : e[ a+'Width' ] , height : e[ a+'Height' ] }
+	}
+
+	document.getElementById('files').addEventListener('change', handleFileSelect, false);
+	document.getElementById('open-image').addEventListener('click', function(event) { showDialog("open-dialog"); }, false);
+	function resizeCanvas() {
+		var view = viewport();
+		var c = document.getElementById("canvas");
+		c.width = (view.width - 20);
+		c.height = view.height - c.offsetTop - 10;
+	};
+	window.onresize = resizeCanvas;
+	window.onload = resizeCanvas;
+</script>
+</html>

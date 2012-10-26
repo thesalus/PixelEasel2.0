@@ -20,6 +20,45 @@ function checkByte(name, expected, actual) {
 	}
 }
 
+function BlockReader(reader) {
+	var self = this;
+	var byteIndex = 0;
+	var bitIndex = 0;	// [76543210]
+	var str = null;
+	init();
+
+	function init() {
+		if (reader.peekByte() == 0x00) {
+			alert('Tried to read too far into bit string.');
+			throw ERR_TOO_FAR;
+		}
+		var subBlockLength = reader.getShort();
+		str = reader.getStr(subBlockLength);
+		byteIndex = 0;
+		bitIndex = 0;
+	}
+
+	this.getBits = function(bitSize) {
+		if (byteIndex >= str.length) {
+			init();
+		}
+		var byteValue = str[byteIndex].charCodeAt(0);
+		var output = byteValue >> bitIndex;
+		bitIndex += bitSize;
+		if (BITS_IN_BYTES < bitIndex) {
+			var remaining = bitIndex - BITS_IN_BYTES;
+			bitIndex = 0;
+			byteIndex += 1;
+			output += self.getBits(remaining) << bitSize - remaining;
+		}
+		return output % Math.pow(2, bitSize);
+	}
+
+	this.isEnding = function(bitSize) {
+		return (byteIndex + (bitIndex + bitSize)/BITS_IN_BYTES >= str.length) && reader.peekByte() == 0x00;
+	}
+}
+
 function BitReader(str) {
 	var reader = this;
 	var byteIndex = 0;
@@ -145,6 +184,10 @@ function GIFReader(file) {
 		return new BitReader(reader.getStr(bytes));
 	}
 
+	this.getBlockReader = function() {
+		return new BlockReader(reader);
+	}
+
 	this.getDataSubBlocks = function() {
 		var data = "";
 		while (reader.peekByte() != 0x00) {
@@ -228,48 +271,41 @@ function ImageDescriptor(reader) {
 		// The current size of each code in bytes. (dictated by largest possible code)
 		var codeSize = lzwMinimumCodeSize + 1;
 
-		// LZW Decompression
-		while (reader.peekByte() != 0x00) {
-			// - decompress a data sub-block
-			var subBlockLength = reader.getShort();
-			console.log("Decompressing a new data sub-block of size: " + subBlockLength);
-			var bitReader = reader.getBitReader(subBlockLength);
+		var blockReader = reader.getBlockReader();
+		var code;
+		while(!blockReader.isEnding(codeSize)) {
+			var previousCode = code;
+			code = blockReader.getBits(codeSize);
+			if (code == endOfInformationCode) {
+				break;
+			} else if (code == expectedClearCode) {
+				codeTable = initializeCodeTable(expectedClearCode);
+				codeSize = lzwMinimumCodeSize + 1;
 
-			var code;
-			while(!bitReader.isEnding(codeSize)) {
-				var previousCode = code;
-				code = bitReader.getBits(codeSize);
-				if (code == endOfInformationCode) {
-					break;
-				} else if (code == expectedClearCode) {
-					codeTable = initializeCodeTable(expectedClearCode);
-					codeSize = lzwMinimumCodeSize + 1;
+				code = blockReader.getBits(codeSize);
+				this.indexes = this.indexes.concat(codeTable[code]);
+				continue;
+			}
 
-					code = bitReader.getBits(codeSize);
-					this.indexes = this.indexes.concat(codeTable[code]);
-					continue;
-				}
-
-				var isInCodeTable = code < codeTable.length;
-				if (isInCodeTable) {
-					var k = codeTable[code][0];
-					this.indexes = this.indexes.concat(codeTable[code]);
-				} else {
-					var k = codeTable[previousCode][0];
-					this.indexes = this.indexes.concat(codeTable[previousCode]);
-					this.indexes.push(k);
-					console.log(code);
-				}
-				// TODO: why is this printing out a 694 with sample.gif?
-				// That seems to be the correct value algorithmically, but it doesn't fit in the table.
-				//console.log(previousCode);
-				var newCode = codeTable[previousCode].slice(0).concat(k);
-				codeTable.push(newCode);
-				if (codeTable.length >= Math.pow(2, codeSize)) {
-					codeSize += 1;
-				}
+			var isInCodeTable = code < codeTable.length;
+			if (isInCodeTable) {
+				var k = codeTable[code][0];
+				this.indexes = this.indexes.concat(codeTable[code]);
+			} else {
+				var k = codeTable[previousCode][0];
+				this.indexes = this.indexes.concat(codeTable[previousCode]);
+				this.indexes.push(k);
+			}
+			// TODO: why is this printing out a 694 with sample.gif?
+			// That seems to be the correct value algorithmically, but it doesn't fit in the table.
+			//console.log(previousCode);
+			var newCode = codeTable[previousCode].slice(0).concat(k);
+			codeTable.push(newCode);
+			if (codeTable.length >= Math.pow(2, codeSize)) {
+				codeSize += 1;
 			}
 		}
+
 		reader.getBlockTerminator();
 	};
 }

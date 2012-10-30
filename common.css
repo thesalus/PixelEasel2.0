@@ -1,0 +1,48 @@
+html, body { margin: 0; padding: 0; }
+header { width: 100%; height: 20px; border-bottom: solid 1px #BBB; background: -webkit-linear-gradient(top, #FFFFFF 0%, #DDD 100%); background: -moz-linear-gradient(to bottom, #FFFFFF, #DDD);  background: -prefix-linear-gradient(top, #FFFFFF, #DDD); color: #535C82; }
+	header h1 { text-shadow: -2px 0px #FFFFFF; font-family: Arial; font-size: 14px; padding: 3px; margin: 0; }
+canvas { image-rendering: optimizeSpeed; image-rendering: -o-crisp-edges; image-rendering:-webkit-optimize-contrast; -ms-interpolation-mode: nearest-neighbor; }
+
+.icon { width: 20px; height: 20px; padding: 2px;  }
+.dialog { z-index: 10; border: solid 1px #AAA; width: 30%; height: 60%; top: 19%; left: 35%; position: absolute; background: white; border-radius: 5px; padding: 1%; display: none; }
+
+#application { top: 54px; position: relative; bottom: 0px; left: 0px; right: 0px; background: -webkit-linear-gradient(top, #CCC 0%, #FFF 10px); position: absolute; }
+	#application nav { padding: 3px 0; }
+
+canvas { -moz-box-shadow: 5px 5px 5px #888; -webkit-box-shadow: 5px 5px 5px #888; box-shadow: 5px 5px 5px #888; border: solid 1px #EFEFEF; background: #EEE; }
+	canvas#canvas { bottom: 10px; position: absolute; left: 10px; right: 10px; top: 10px; margin: auto 0; }
+#sidebar{ right: 15px; top: 20px; position: absolute;}
+	#sidebar > * { width: 190px; border: solid 1px transparent; margin: 5px 0; padding: 5px; }
+	#zoomer { text-align: center; }
+		#zoomer > * { vertical-align: top; }
+	#sidebar > *:first-child { margin-top: 0; }
+	canvas#preview { height: 200px; }
+
+nav {
+ background: #FEFEFE;
+ height: 32px;
+ padding: 3px 10px 0 10px;
+}
+
+nav button {
+ background: #DDD;
+ border: solid 1px #91B7C1;
+ margin: 0;
+ border-radius: 3px;
+}
+nav button{
+ background: transparent;
+ border: solid 1px transparent;
+ margin: 0;
+ border-radius: 2px;
+}
+nav button:hover {
+ background: #EEE;
+ border: solid 1px #CCC;
+ cursor: pointer;
+}
+nav button:active {
+ background: #CCF0FF;
+}
+
+#open-image-files { display: none; }

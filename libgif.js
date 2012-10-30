@@ -1,35 +1,25 @@
 var BITS_IN_BYTES = 8;
-var ERR_TOO_FAR = "ERR_TOO_FAR";
+var ERR_TOO_FAR = "Tried to read too far into bit string.";
 var ERR_EXPECTED_TERMINATOR = "ERR_EXPECTED_TERMINATOR";
 
 // GIF Spec:
 // http://www.matthewflickinger.com/lab/whatsinagif/bits_and_bytes.asp
 // http://www.w3.org/Graphics/GIF/spec-gif89a.txt
 
-function hex(number) {
-	var output = number.toString(16);
-	if (number < 0x10) {
-		output = "0" + output;
-	}
-	return output;
-}
-
 function checkByte(name, expected, actual) {
-	if (expected != actual) {
+	if (expected !== actual) {
 		alert(name + ' should be 0x' + hex(expected) + ', but instead got 0x' + hex(actual));
 	}
 }
 
 function BlockReader(reader) {
-	var self = this;
-	var byteIndex = 0;
-	var bitIndex = 0;	// [76543210]
-	var str = null;
-	init();
+	var self = this,
+		byteIndex = 0,
+		bitIndex = 0,	// [76543210]
+		str = null;
 
 	function init() {
-		if (reader.peekByte() == 0x00) {
-			alert('Tried to read too far into bit string.');
+		if (reader.peekByte() === 0x00) {
 			throw ERR_TOO_FAR;
 		}
 		var subBlockLength = reader.getShort();
@@ -38,12 +28,11 @@ function BlockReader(reader) {
 		bitIndex = 0;
 	}
 
-	this.getBits = function(bitSize) {
+	this.getBits = function (bitSize) {
 		if (byteIndex >= str.length) {
 			init();
 		}
-		var byteValue = str[byteIndex].charCodeAt(0);
-		var output = byteValue >> bitIndex;
+		var output = str[byteIndex].charCodeAt(0) >> bitIndex;
 		bitIndex += bitSize;
 		if (BITS_IN_BYTES < bitIndex) {
 			var remaining = bitIndex - BITS_IN_BYTES;
@@ -52,25 +41,26 @@ function BlockReader(reader) {
 			output += self.getBits(remaining) << bitSize - remaining;
 		}
 		return output % Math.pow(2, bitSize);
-	}
+	};
 
-	this.isEnding = function(bitSize) {
-		return (byteIndex + (bitIndex + bitSize)/BITS_IN_BYTES >= str.length) && reader.peekByte() == 0x00;
-	}
+	this.isEnding = function (bitSize) {
+		return reader.peekByte() === 0x00 && (byteIndex + (bitIndex + bitSize) / BITS_IN_BYTES >= str.length);
+	};
+
+	init();
 }
 
 function BitReader(str) {
-	var reader = this;
-	var byteIndex = 0;
-	var bitIndex = 0;	// [76543210]
+	var reader = this,
+		byteIndex = 0,
+		bitIndex = 0;	// [76543210]
 
-	this.getBits = function(bitSize) {
+	this.getBits = function (bitSize) {
 		if (byteIndex >= str.length) {
-			// alert('Tried to read too far into bit string.');
 			throw ERR_TOO_FAR;
 		}
-		var byteValue = str[byteIndex].charCodeAt(0);
-		var output = byteValue >> bitIndex;
+		var byteValue = str[byteIndex].charCodeAt(0),
+			output = byteValue >> bitIndex;
 		bitIndex += bitSize;
 		if (BITS_IN_BYTES < bitIndex) {
 			var remaining = bitIndex - BITS_IN_BYTES;
@@ -79,18 +69,21 @@ function BitReader(str) {
 			output += reader.getBits(remaining) << bitSize - remaining;
 		}
 		return output % Math.pow(2, bitSize);
-	}
+	};
 
-	this.isEnding = function(bitSize) {
-		return (byteIndex + (bitIndex + bitSize)/BITS_IN_BYTES >= str.length);
-	}
+	this.getBoolean = function () {
+		return 1 === this.getBits(1);
+	};
+
+	this.isEnding = function (bitSize) {
+		return (byteIndex + (bitIndex + bitSize) / BITS_IN_BYTES >= str.length);
+	};
 }
 
 /**
  * Creates a reader for a GIF (uses little-endian data).
  */
 function GIFReader(file) {
-	// TODO: do bounds-checking, please.
 	var reader = this;
 	var byteIndex = 0;
 	/**
@@ -99,9 +92,9 @@ function GIFReader(file) {
 	 * @this {GIFReader}
 	 * @returns {byte} The next byte of data.
 	 */
-	this.peekByte = function() {
+	this.peekByte = function () {
 		return file[byteIndex].charCodeAt(0);
-	}
+	};
 
 	/**
 	 * Get the next String.
@@ -110,11 +103,11 @@ function GIFReader(file) {
 	 * @param {number} characters The desired number of characters.
 	 * @returns {string} A string of the specified size.
 	 */
-	this.getStr = function(characters) {
+	this.getStr = function (characters) {
 		var output = file.slice(byteIndex, byteIndex + characters);
 		byteIndex += characters;
 		return output;
-	}
+	};
 
 	/**
 	 * Get the next Unsigned integer.
@@ -122,12 +115,12 @@ function GIFReader(file) {
 	 * @this {GIFReader}
 	 * @returns {number} An integer between 0-65,535. (2 bytes)
 	 */
-	this.getUnsigned = function() {
+	this.getUnsigned = function () {
 		var output = file[byteIndex + 1].charCodeAt(0) << 8;
 		output += file[byteIndex].charCodeAt(0);
 		byteIndex += 2;
 		return output;
-	}
+	};
 
 	/**
 	 * Get the next byte.
@@ -135,10 +128,10 @@ function GIFReader(file) {
 	 * @this {GIFReader}
 	 * @returns {byte} The next byte of data.
 	 */
-	this.getByte = function() {
+	this.getByte = function () {
 		byteIndex += 1;
-		return file[byteIndex-1].charCodeAt(0);
-	}
+		return file[byteIndex - 1].charCodeAt(0);
+	};
 
 	/**
 	 * Get the next short value.
@@ -146,19 +139,19 @@ function GIFReader(file) {
 	 * @this {GIFReader}
 	 * @returns {number} An integer between 0-255. (1 byte)
 	 */
-	this.getShort = function() {
+	this.getShort = function () {
 		return reader.getByte();
-	}
+	};
 
 	/**
 	 * Get the next Colour.
 	 * 
 	 * @this {GIFReader}
-	 * @returns {Colour} A colour.
+	 * @returns {RGB} A colour.
 	 */
-	this.getColour = function() {
-		return new Colour(reader.getShort(), reader.getShort(), reader.getShort());
-	}
+	this.getColour = function () {
+		return new RGB(reader.getShort(), reader.getShort(), reader.getShort());
+	};
 
 	/**
 	 * Get the next Colour.
@@ -166,12 +159,12 @@ function GIFReader(file) {
 	 * @this {GIFReader}
 	 * @throws {ERR_EXPECTED_TERMINATOR} If the next byte is not a terminator.
 	 */
-	this.getBlockTerminator = function() {
-		if (0x00 != reader.getByte()) {
+	this.getBlockTerminator = function () {
+		if (0x00 !== reader.getByte()) {
 			alert('0x00 Block Terminator expected!');
 			throw ERR_EXPECTED_TERMINATOR;
 		}
-	}
+	};
 
 	/**
 	 * Get a BitReader for the given number of bytes.
@@ -180,23 +173,23 @@ function GIFReader(file) {
 	 * @param {number} bytes The number of characters in the string.
 	 * @returns {BitReader} A bitreader for the specified number of bytes.
 	 */
-	this.getBitReader = function(bytes) {
+	this.getBitReader = function (bytes) {
 		return new BitReader(reader.getStr(bytes));
-	}
+	};
 
-	this.getBlockReader = function() {
+	this.getBlockReader = function () {
 		return new BlockReader(reader);
-	}
+	};
 
-	this.getDataSubBlocks = function() {
+	this.getDataSubBlocks = function () {
 		var data = "";
-		while (reader.peekByte() != 0x00) {
+		while (reader.peekByte() !== 0x00) {
 			var subBlockLength = reader.getShort();
 			data = data + reader.getStr(subBlockLength);
 		}
 		reader.getBlockTerminator();
 		return data;
-	}
+	};
 }
 
 // Global Colour Table
@@ -206,14 +199,14 @@ function GCT(reader) {
 	this.size = Math.pow(2, 1 + bitReader.getBits(3));
 	// Sort Flag: set if the colours in the global color table are sorted in order of "decreasing importance"
 	// - typically means "decreasing frequency" in the image. This can help the image decoder but is not required
-	this.isSorted = (1 == bitReader.getBits(1));
+	this.isSorted = bitReader.getBoolean();
 	// Color Resolution
 	// - is the number of bits per primary color available to the original image, minus 1
 	// - represents the size of the entire palette from which the colors in the graphic were selected.
 	// See: http://www.devx.com/projectcool/Article/19997/0/page/7
 	this.colourResolution = bitReader.getBits(3);
 	// Global Color Table flag: if it is set (i.e., 1), then a global color table will follow
-	this.isSet = (1 == bitReader.getBits(1));
+	this.isSet = bitReader.getBoolean();
 }
 
 function GCE(reader) {
@@ -224,12 +217,39 @@ function GCE(reader) {
 
 	var bitReader = reader.getBitReader(1);
 	// - Transparent Colour Flag
-	this.hasTransparentColour = (1 == bitReader.getBits(1));
+	this.hasTransparentColour = bitReader.getBoolean();
 	// - User Input Flag
-	this.userInput = bitReader.getBits(1);
+	this.userInput = bitReader.getBoolean();
 	// - Disposal Method
-	this.colourResolution = bitReader.getBits(3);
+	//   0 -   No disposal specified. The decoder is
+	//         not required to take any action.
+	//   1 -   Do not dispose. The graphic is to be left
+	//         in place.
+	//   2 -   Restore to background color. The area used by the
+	//         graphic must be restored to the background color.
+	//   3 -   Restore to previous. The decoder is required to
+	//         restore the area overwritten by the graphic with
+	//         what was there prior to rendering the graphic.
+	// 4-7 -   To be defined.
+	this.disposalMethod = bitReader.getBits(3);
 	// - Reserved for future use
+	bitReader.getBits(3);
+	// - Delay Time
+	this.delayTime = reader.getUnsigned();
+	// - Transparent Colour Index
+	this.transparentColourIndex = reader.getShort();
+	reader.getBlockTerminator();
+}
+
+function initializeCodeTable(size) {
+	var codeTable = [];
+	var i;
+	for (i = 0; i < size; i++) {
+		codeTable.push([i]);
+	}
+	codeTable.push(0);		// Add Clear Code
+	codeTable.push(-1);	// Add End Of Information Code
+	return codeTable;
 }
 
 function ImageDescriptor(reader) {
@@ -241,71 +261,59 @@ function ImageDescriptor(reader) {
 	var bitReader = reader.getBitReader(1);
 	this.localColourTableSize = Math.pow(2, 1 + bitReader.getBits(3));
 	bitReader.getBits(2);	// - Reserved for future use
-	this.isSorted = (1 == bitReader.getBits(1));
-	this.isInterlaced = (1 == bitReader.getBits(1));
-	this.hasLocalColourTable = (1 == bitReader.getBits(1));
+	this.isSorted = bitReader.getBoolean();
+	this.isInterlaced = bitReader.getBoolean();
+	this.hasLocalColourTable = bitReader.getBoolean();
 
-	function initializeCodeTable(size) {
-		var codeTable = new Array();
-		for (var i = 0; i < size; i++) {
-			codeTable.push([i]);
-		}
-		// Add Clear Code
-		codeTable.push(0);
-		// Add End Of Information Code
-		codeTable.push(-1);
-		return codeTable;
-	}
-
-	this.parseImageData = function(colourTable) {
-		this.indexes = new Array();
+	this.parseImageData = function (colourTable) {
+		var indexList = [];
 		//  Each image must fit within the boundaries of the Logical Screen, as defined in the Logical Screen Descriptor.
 
 		var lzwMinimumCodeSize = reader.getShort();
-		var expectedClearCode = Math.pow(2, lzwMinimumCodeSize)
+		var expectedClearCode = Math.pow(2, lzwMinimumCodeSize);
 		var endOfInformationCode = expectedClearCode + 1;
 
 		// Initialize Code Table
-		// ASSUMPTION: the code table is shared across all data sub-blocks;
-		var codeTable = initializeCodeTable(expectedClearCode);
+		var codeTable;
 		// The current size of each code in bytes. (dictated by largest possible code)
 		var codeSize = lzwMinimumCodeSize + 1;
+		var codeMax = Math.pow(2, codeSize);
 
 		var blockReader = reader.getBlockReader();
 		var code;
-		while(!blockReader.isEnding(codeSize)) {
+		while (!blockReader.isEnding(codeSize)) {
 			var previousCode = code;
 			code = blockReader.getBits(codeSize);
-			if (code == endOfInformationCode) {
+			if (code === endOfInformationCode) {
 				break;
-			} else if (code == expectedClearCode) {
+			} else if (code === expectedClearCode) {
 				codeTable = initializeCodeTable(expectedClearCode);
 				codeSize = lzwMinimumCodeSize + 1;
+				codeMax = Math.pow(2, codeSize);
 
 				code = blockReader.getBits(codeSize);
-				this.indexes = this.indexes.concat(codeTable[code]);
+				indexList.push(codeTable[code]);
 				continue;
 			}
 
-			var isInCodeTable = code < codeTable.length;
+			var isInCodeTable = code < codeTable.length, k;
 			if (isInCodeTable) {
-				var k = codeTable[code][0];
-				this.indexes = this.indexes.concat(codeTable[code]);
+				k = codeTable[code][0];
+				indexList.push(codeTable[code]);
 			} else {
-				var k = codeTable[previousCode][0];
-				this.indexes = this.indexes.concat(codeTable[previousCode]);
-				this.indexes.push(k);
+				k = codeTable[previousCode][0];
+				indexList.push(codeTable[previousCode]);
+				indexList.push([k]);
 			}
-			// TODO: why is this printing out a 694 with sample.gif?
-			// That seems to be the correct value algorithmically, but it doesn't fit in the table.
-			//console.log(previousCode);
+
 			var newCode = codeTable[previousCode].slice(0).concat(k);
 			codeTable.push(newCode);
-			if (codeTable.length >= Math.pow(2, codeSize)) {
+			if (codeTable.length >= codeMax) {
 				codeSize += 1;
+				codeMax *= 2;
 			}
 		}
-
+		this.indexes = Array.prototype.concat.apply([], indexList);
 		reader.getBlockTerminator();
 	};
 }
@@ -313,11 +321,13 @@ function ImageDescriptor(reader) {
 function GIF(file) {
 	var gif = this;
 	var reader = new GIFReader(file);
+	var lastGCE = null;
 
-	this.images = new Array();
+	this.images = [];
 	function parseHeader() {
-		if( "GIF89a" !== reader.getStr(6)) {
+		if ("GIF89a" !== reader.getStr(6)) {
 			alert('Please select a GIF file.');
+			throw 'Please select a GIF file.';
 		}
 	}
 	function parseLogicalScreenDescriptor() {
@@ -333,42 +343,17 @@ function GIF(file) {
 		gif.pixelAspectRatio = reader.getShort();
 	}
 	function parseColourTable(size) {
-		var colourTable = new Array();
-		for (var i = 0; i < size; i++) {
+		var colourTable = [], i;
+		for (i = 0; i < size; i++) {
 			colourTable.push(reader.getColour());
 		}
 		return colourTable;
-	}
-	function parseControlExtension() {
-		checkByte("Extension Introducer", 0x21, reader.getByte());
-		switch(reader.peekByte()) {
-			case 0x01:
-				parsePlainTextExtension();
-				break;
-			case 0xF9:
-				parseGraphicsControlExtension();
-				break;
-			case 0xFE:
-				parseCommentExtension();
-				break;
-			case 0xFF:
-				parseApplicationExtension();
-				break;
-			default:
-				alert("Unknown control extension");
-		}
-	}
-	function parseGraphicsControlExtension() {
-		gif.gce = new GCE(reader);
-		gif.delayTime = reader.getUnsigned();
-		gif.transparentColourIndex = reader.getShort();
-		reader.getBlockTerminator();
 	}
 	function parsePlainTextExtension() {
 		// requires version 89a
 		checkByte("Plain Text Label", 0x01, reader.getByte());
 		var blockSize = reader.getShort();
-		if (blockSize == 12) {
+		if (blockSize === 12) {
 			var textGridLeftPosition = reader.getUnsigned();
 			var textGridTopPosition = reader.getUnsigned();
 			var textGridWidth = reader.getUnsigned();
@@ -395,13 +380,34 @@ function GIF(file) {
 		// requires version 89a
 		checkByte("Comment Extension", 0xFE, reader.getByte());
 		var commentData = reader.getDataSubBlocks();
-		
+	}
+	function parseControlExtension() {
+		checkByte("Extension Introducer", 0x21, reader.getByte());
+		switch (reader.peekByte()) {
+		case 0x01:
+			parsePlainTextExtension();
+			break;
+		case 0xF9:
+			lastGCE = new GCE(reader);
+			break;
+		case 0xFE:
+			parseCommentExtension();
+			break;
+		case 0xFF:
+			parseApplicationExtension();
+			break;
+		default:
+			alert("Unknown control extension");
+		}
 	}
 	function parseImageDescriptor() {
 		checkByte("Image Separator", 0x2C, reader.getByte());
 		var image = new ImageDescriptor(reader);
 		if (image.hasLocalColourTable) {
 			image.colourTable = parseColourTable(image.localColourTableSize);
+			if (lastGCE.hasTransparentColor) {
+				image.colourTable[lastGCE.transparentColourIndex].a == 0;
+			}
 			image.data.parseImageData(image.colourTable);
 		} else {
 			image.parseImageData(gif.globalColourTable);
@@ -414,22 +420,22 @@ function GIF(file) {
 		gif.globalColourTable = parseColourTable(gif.gct.size);
 	}
 
-	while(true) {
+	while (true) {
 		switch (reader.peekByte()) {
-			case 0x3B:
-				console.log("We're done reading.");
-				return;
-			case 0x2C:
-				console.log("parsing an image descriptor");
-				gif.images.push(parseImageDescriptor());
-				break;
-			case 0x21:
-				console.log("parsing an extension block");
-				parseControlExtension();
-				break;
-			default:
-				console.log("something else");
-				break;
+		case 0x3B:
+			console.log("We're done reading.");
+			return;
+		case 0x2C:
+			console.log("parsing an image descriptor");
+			gif.images.push(parseImageDescriptor());
+			break;
+		case 0x21:
+			console.log("parsing an extension block");
+			parseControlExtension();
+			break;
+		default:
+			console.log("something else");
+			break;
 		}
 	}
 }
@@ -438,14 +444,14 @@ function GIFWrapper(gif) {
 	var wrapper = this;
 	this.width = gif.width;
 	this.height = gif.height;
-	
-	this.getHex = function(x, y) {
-		var index = gif.images[0].indexes[wrapper.width * y + x];
+
+	this.getColourAt = function (x, y) {
+		var index = gif.images[0].indexes[wrapper.width * y + x], colour;
 		if (gif.images[0].hasLocalColourTable) {
-			var colour = gif.images[0].colourTable[index];
+			colour = gif.images[0].colourTable[index];
 		} else {
-			var colour = gif.globalColourTable[index];
+			colour = gif.globalColourTable[index];
 		}
-		return "#" + hex(colour.r) + hex(colour.g) + hex(colour.b);
+		return colour;
 	};
 }

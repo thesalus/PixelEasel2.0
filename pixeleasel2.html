@@ -1,52 +1,69 @@
 <html>
 <head>
-<title>PixelEasel 2.0</title>
-<script src="image-common.js"></script>
-<script src="gif.js"></script>
-<style type="text/css">
-	html, body { margin: 0; padding: 0; }
-	header { width: 100%; height: 32px; border-bottom: solid 1px #91B7C1; background: -webkit-linear-gradient(top, #FFFFFF 0%, #B7C4CC 100%); color: #535C82; }
-		header h1 { text-shadow: -2px 0px #FFFFFF; font-family: Arial; font-size: 1.4em; padding: 3px; }
-	.icon { width: 20px; height: 20px; padding: 2px; }
-	#application { padding: 0.5%; top: 32px; position: absolute; bottom: 0px; left: 0px; right: 0px; }
-	#canvas { bottom: 10px; position: fixed; left: 10px; right: 10px; top: 90px; }
-	#application nav { padding: 3px 0; }
-	#dialog-overlay { z-index: 5; width: 100%; height: 100%; top: 0; left: 0; position: absolute; background: #DDDDDD; opacity: 0.9; display: none; }
-	.dialog { z-index: 10; border: solid 1px #AAA; width: 30%; height: 60%; top: 19%; left: 35%; position: absolute; background: white; border-radius: 5px; padding: 1%; display: none; }
-</style>
+	<title>PixelEasel 2.0</title>
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+	<script src="libcanvas.js"></script>
+	<script src="libimage.js"></script>
+	<script src="libgif.js"></script>
+	<link rel="stylesheet" href="common.css" TYPE="text/css" media=screen>
 </head>
 <body>
 <header>
-<h1>PixelEasel 2.0</h1>
+	<h1>PixelEasel 2.0</h1>
 </header>
-<div id="application">
 <nav>
-	<button id="new-image"><img src="images/page_white.png" class="icon"></button>
-	<button id="open-image"><img src="images/folder.png" class="icon"></button>
+	<button id="new-image"><img src="images/new.png" class="icon"></button>
+	<button id="open-image"><img src="images/open.png" class="icon"></button>
+	<input type="file" id="open-image-files" name="files[]" accept="image/gif" />
 </nav>
-<canvas id="canvas" style="border: solid 1px black;"></canvas>
+<div id="application">
+	<canvas id="canvas"></canvas>
+	<div id="sidebar">
+		<canvas id="preview"></canvas>
+		<div id="zoomer">
+			<input id="zoom" type="range" min="1" max="10" step="1" value="0" style="width: 110px;"/>
+			<select id="zoom-dropdown">
+				<option value="1">100%</option>
+				<option value="2">200%</option>
+				<option value="3">300%</option>
+				<option value="4">400%</option>
+				<option value="5">500%</option>
+				<option value="6">600%</option>
+				<option value="7">700%</option>
+				<option value="8">800%</option>
+				<option value="9">900%</option>
+				<option value="10">1000%</option>
+			</select>
+		</div>
+	</div>
 </div>
 <div id="dialog-overlay"></div>
-<div id="open-dialog" class="dialog">
-	<input type="file" id="files" name="files[]" accept="image/gif" />
-</div>
 
 </body>
-<script type="text/JavaScript">
-	var ERR_ILLEGAL_FILE = "Illegal file";
 
-	function showDialog(id) {
-		document.getElementById(id).style["display"] = "block";
-		document.getElementById('dialog-overlay').style["display"] = "block";
-		document.getElementById('dialog-overlay').addEventListener('click', function() {
-			hideDialog(id); 
-			this.removeEventListener('click', arguments.callee, false);
-		}, false);
-	}
-	function hideDialog(id) {
-		document.getElementById(id).style["display"] = "none";
-		document.getElementById('dialog-overlay').style["display"] = "none";
-	}
+<script type="text/JavaScript">
+	var canvas;
+
+	// Set up scales
+	$("#zoom").change(function(event) {
+		canvas.setZoom(this.value);
+		if ($("#zoom-dropdown").val() != this.value) {
+			$("#zoom-dropdown").val(this.value);
+		}
+	});
+
+	$("#zoom-dropdown").change(function(event) {
+		canvas.setZoom(this.value);
+		if (this.value !== $("#zoom").val()) {
+			$("#zoom").val(parseInt(this.value));
+		}
+	});
+
+	$(window).load(function() {
+		canvas = new Canvas("canvas");
+		window.onresize = canvas.resize;
+		window.onload = canvas.resize;
+	});
 
 	// Credits:
 	// Reading files: http://www.html5rocks.com/en/tutorials/file/dndfiles/
@@ -54,7 +71,7 @@
 		var files = event.target.files;
 		if (!files.length) {
 			alert('Please select a file!');
-			return;
+			throw "No file provided!";
 		}
 
 		var file = files[0];
@@ -64,57 +81,23 @@
 	function doFile(file) {
 		if (!file.type.match('image.*')) {
 			alert('Please select an image file!');
-			throw ERR_ILLEGAL_FILE;
+			throw "Illegal file type!";
 		}
-		
+
 		var reader = new FileReader();
-			
+
 		reader.onloadend = function(event) {
 			if (event.target.readyState == FileReader.DONE) {
-				hideDialog("open-dialog");
-				var gif = new GIF(event.target.result);
-				draw(new GIFWrapper(gif));
+				gif = new GIF(event.target.result);
+				canvas.setImage(new GIFWrapper(gif));
+				canvas.draw();
 			}
 		};
 
 		reader.readAsBinaryString(file);
 	}
-	
-	function draw(image) {
-		var c = document.getElementById("canvas");
-		var context = c.getContext("2d");
 
-		context.clearRect (0, 0, c.width, c.height);
-		var scale = 3;
-		var x_offset = (c.width - scale * image.width) / 2;
-		var y_offset = (c.height - scale * image.height) / 2;
-		for (var x = 0; x < image.width; x++) {
-			for (var y = 0; y < image.height; y++) {
-				context.fillStyle=image.getHex(x, y);
-				context.fillRect(x_offset + x*scale, y_offset + y*scale, scale, scale);
-			}
-		}
-	}
-	
-	function viewport() {
-		var e = window
-		, a = 'inner';
-		if ( !( 'innerWidth' in window ) ) {
-			a = 'client';
-			e = document.documentElement || document.body;
-		}
-		return { width : e[ a+'Width' ] , height : e[ a+'Height' ] }
-	}
-
-	document.getElementById('files').addEventListener('change', handleFileSelect, false);
-	document.getElementById('open-image').addEventListener('click', function(event) { showDialog("open-dialog"); }, false);
-	function resizeCanvas() {
-		var view = viewport();
-		var c = document.getElementById("canvas");
-		c.width = (view.width - 20);
-		c.height = view.height - c.offsetTop - 10;
-	};
-	window.onresize = resizeCanvas;
-	window.onload = resizeCanvas;
+	document.getElementById('open-image-files').addEventListener('change', handleFileSelect, false);
+	$('#open-image').click(function(e) { $("#open-image-files").click(); });
 </script>
 </html>

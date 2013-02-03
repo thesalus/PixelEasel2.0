@@ -1,103 +1,33 @@
+<!DOCTYPE html>
 <html>
 <head>
 	<title>PixelEasel 2.0</title>
-	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
-	<script src="scripts/widget/canvas.js"></script>
-	<script src="scripts/image/rgpba.js"></script>
-	<script src="scripts/lib/gif.js"></script>
 	<link rel="stylesheet" href="assets/common.css" TYPE="text/css" media=screen>
+	<script src="scripts/lib/jquery.min.js"></script>
+	<script>
+		var require = { urlArgs: "v=" +  (new Date()).getTime() }
+	</script>
+	<script data-main="scripts/main" src="scripts/lib/require.min.js"></script>
 </head>
 <body>
 <header>
-	<h1>PixelEasel 2.0</h1>
+	<nav>
+		<button id="new-image"><img src="images/new.png" class="icon"></button>
+		<button id="open-image"><img src="images/open.png" class="icon"></button>
+		<button id="save-image"><img src="images/save.png" class="icon"></button>
+	</nav>
 </header>
-<nav>
-	<button id="new-image"><img src="images/new.png" class="icon"></button>
-	<button id="open-image"><img src="images/open.png" class="icon"></button>
-	<input type="file" id="open-image-files" name="files[]" accept="image/gif" />
-</nav>
 <div id="application">
-	<canvas id="canvas"></canvas>
+	<div id="content">
+		<div class="wrapper"></div>
+	</div>
 	<div id="sidebar">
-		<canvas id="preview"></canvas>
-		<div id="zoomer">
-			<input id="zoom" type="range" min="1" max="10" step="1" value="0" style="width: 110px;"/>
-			<select id="zoom-dropdown">
-				<option value="1">100%</option>
-				<option value="2">200%</option>
-				<option value="3">300%</option>
-				<option value="4">400%</option>
-				<option value="5">500%</option>
-				<option value="6">600%</option>
-				<option value="7">700%</option>
-				<option value="8">800%</option>
-				<option value="9">900%</option>
-				<option value="10">1000%</option>
-			</select>
-		</div>
+		<div id="preview" class="wrapper"></div>
+		<nav id="toolbar"></nav>
 	</div>
 </div>
-<div id="dialog-overlay"></div>
-
+<footer>
+	<div id="zoomer"></div>
+</footer>
 </body>
-
-<script type="text/JavaScript">
-	var canvas;
-
-	// Set up scales
-	$("#zoom").change(function(event) {
-		canvas.setZoom(this.value);
-		if ($("#zoom-dropdown").val() != this.value) {
-			$("#zoom-dropdown").val(this.value);
-		}
-	});
-
-	$("#zoom-dropdown").change(function(event) {
-		canvas.setZoom(this.value);
-		if (this.value !== $("#zoom").val()) {
-			$("#zoom").val(parseInt(this.value));
-		}
-	});
-
-	$(window).load(function() {
-		canvas = new Canvas("canvas");
-		window.onresize = canvas.resize;
-		window.onload = canvas.resize;
-	});
-
-	// Credits:
-	// Reading files: http://www.html5rocks.com/en/tutorials/file/dndfiles/
-	function handleFileSelect(event) {
-		var files = event.target.files;
-		if (!files.length) {
-			alert('Please select a file!');
-			throw "No file provided!";
-		}
-
-		var file = files[0];
-		doFile(file);
-	}
-
-	function doFile(file) {
-		if (!file.type.match('image.*')) {
-			alert('Please select an image file!');
-			throw "Illegal file type!";
-		}
-
-		var reader = new FileReader();
-
-		reader.onloadend = function(event) {
-			if (event.target.readyState == FileReader.DONE) {
-				gif = new GIF(event.target.result);
-				canvas.setImage(new GIFWrapper(gif));
-				canvas.draw();
-			}
-		};
-
-		reader.readAsBinaryString(file);
-	}
-
-	document.getElementById('open-image-files').addEventListener('change', handleFileSelect, false);
-	$('#open-image').click(function(e) { $("#open-image-files").click(); });
-</script>
 </html>

@@ -1,6 +1,7 @@
-var BITS_IN_BYTES = 8;
-var ERR_TOO_FAR = "Tried to read too far into bit string.";
-var ERR_EXPECTED_TERMINATOR = "ERR_EXPECTED_TERMINATOR";
+define("lib/gif", ["../image/rgba"], (function(RGB) {
+var BITS_IN_BYTES = 8
+,   ERR_TOO_FAR = "Tried to read too far into bit string."
+,   ERR_EXPECTED_TERMINATOR = "ERR_EXPECTED_TERMINATOR"
 
 // GIF Spec:
 // http://www.matthewflickinger.com/lab/whatsinagif/bits_and_bytes.asp
@@ -8,24 +9,33 @@ var ERR_EXPECTED_TERMINATOR = "ERR_EXPECTED_TERMINATOR";
 
 function checkByte(name, expected, actual) {
 	if (expected !== actual) {
-		alert(name + ' should be 0x' + hex(expected) + ', but instead got 0x' + hex(actual));
+		alert(name + ' should be 0x' + hex(expected)
+			+ ', but instead got 0x' + hex(actual))
 	}
 }
 
+function hex(number) {
+	var output = number.toString(16)
+	if (number < 0x10) {
+		output = "0" + output
+	}
+	return output
+}
+
 function BlockReader(reader) {
-	var self = this,
-		byteIndex = 0,
-		bitIndex = 0,	// [76543210]
-		str = null;
+	var self = this
+	,   byteIndex = 0
+	,   bitIndex = 0   // [76543210]
+	,   str = null
 
 	function init() {
 		if (reader.peekByte() === 0x00) {
 			throw ERR_TOO_FAR;
 		}
-		var subBlockLength = reader.getShort();
-		str = reader.getStr(subBlockLength);
-		byteIndex = 0;
-		bitIndex = 0;
+		var subBlockLength = reader.getShort()
+		str = reader.getStr(subBlockLength)
+		byteIndex = 0
+		bitIndex = 0
 	}
 
 	this.getBits = function (bitSize) {
@@ -51,9 +61,9 @@ function BlockReader(reader) {
 }
 
 function BitReader(str) {
-	var reader = this,
-		byteIndex = 0,
-		bitIndex = 0;	// [76543210]
+	var reader = this
+	,   byteIndex = 0
+	,   bitIndex = 0   // [76543210]
 
 	this.getBits = function (bitSize) {
 		if (byteIndex >= str.length) {
@@ -308,7 +318,7 @@ function ImageDescriptor(reader) {
 
 			var newCode = codeTable[previousCode].slice(0).concat(k);
 			codeTable.push(newCode);
-			if (codeTable.length >= codeMax) {
+			if (codeTable.length >= codeMax && codeSize < 12) {
 				codeSize += 1;
 				codeMax *= 2;
 			}
@@ -325,9 +335,13 @@ function GIF(file) {
 
 	this.images = [];
 	function parseHeader() {
-		if ("GIF89a" !== reader.getStr(6)) {
-			alert('Please select a GIF file.');
+		gif.type = reader.getStr(6);
+		switch (gif.type) {
+		default:
 			throw 'Please select a GIF file.';
+		case "GIF87a":
+			// TODO: handle this
+		case "GIF89a":
 		}
 	}
 	function parseLogicalScreenDescriptor() {
@@ -405,12 +419,17 @@ function GIF(file) {
 		var image = new ImageDescriptor(reader);
 		if (image.hasLocalColourTable) {
 			image.colourTable = parseColourTable(image.localColourTableSize);
-			if (lastGCE.hasTransparentColor) {
-				image.colourTable[lastGCE.transparentColourIndex].a == 0;
+			if (lastGCE.hasTransparentColour) {
+				image.colourTable[lastGCE.transparentColourIndex].a = 0;
 			}
 			image.data.parseImageData(image.colourTable);
 		} else {
 			image.parseImageData(gif.globalColourTable);
+			if (null != lastGCE && lastGCE.hasTransparentColour) {
+				// TODO: check to see if this is permissible
+				// do at colour-retrieval time
+				gif.globalColourTable[lastGCE.transparentColourIndex].a = 0;
+			}
 		}
 		return image;
 	}
@@ -423,14 +442,14 @@ function GIF(file) {
 	while (true) {
 		switch (reader.peekByte()) {
 		case 0x3B:
-			console.log("We're done reading.");
+//			console.log("We're done reading.");
 			return;
 		case 0x2C:
-			console.log("parsing an image descriptor");
+//			console.log("parsing an image descriptor");
 			gif.images.push(parseImageDescriptor());
 			break;
 		case 0x21:
-			console.log("parsing an extension block");
+//			console.log("parsing an extension block");
 			parseControlExtension();
 			break;
 		default:
@@ -439,19 +458,5 @@ function GIF(file) {
 		}
 	}
 }
-
-function GIFWrapper(gif) {
-	var wrapper = this;
-	this.width = gif.width;
-	this.height = gif.height;
-
-	this.getColourAt = function (x, y) {
-		var index = gif.images[0].indexes[wrapper.width * y + x], colour;
-		if (gif.images[0].hasLocalColourTable) {
-			colour = gif.images[0].colourTable[index];
-		} else {
-			colour = gif.globalColourTable[index];
-		}
-		return colour;
-	};
-}
+return GIF
+}))

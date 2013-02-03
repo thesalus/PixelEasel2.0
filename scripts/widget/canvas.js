@@ -1,70 +1,90 @@
-function Canvas(id) {
-	this.zoom = 1;
-	var self = this;
-	var c = document.getElementById(id);
-	var context = c.getContext("2d");
-
-	var p = document.getElementById("preview");
-	var preview = p.getContext("2d");
-
-	var imageObject;
-	var imageData;
-
-	this.draw = function() {
-		this.reset();
-		if (typeof imageObject === 'undefined') {
-			return;
-		}
-		var newCanvas = $("<canvas>")
-			.attr("width", imageData.width)
-			.attr("height", imageData.height)[0];
-
-		newCanvas.getContext("2d").putImageData(imageData, 0, 0);
-		// interpolation issue: http://code.google.com/p/chromium/issues/detail?id=134040
-
-		context.translate((c.width - this.zoom * imageObject.width) / 2,
-			(c.height - this.zoom * imageObject.height) / 2);
-		context.scale(this.zoom, this.zoom);
-		context.drawImage(newCanvas, 0, 0);
-		// TODO: preview (weird distortions)
-		preview.drawImage(newCanvas, 0, 0);
-	};
-
-	this.reset = function() {
-		context.fillStyle = "#EEE";
-		context.fillRect (0, 0, c.width, c.height);
-		// TODO: set border
-		context.setTransform(1, 0, 0, 1, 0, 0);
-	};
-
-	this.resize = function() {
-		c.width = ($("#application").width() - 250);
-		c.height = $("#application").height() - 40;
-		self.draw();
-	};
-
-	this.setImage = function(image) {
-		imageObject = image;
-		imageData = context.createImageData(image.width, image.height)
-		for (var x = 0; x < image.width; x++) {
-			for (var y = 0; y < image.height; y++) {
-				index = (x + y * image.width) * 4;
-				colour = image.getColourAt(x, y);
-				imageData.data[index + 0] = colour.r;
-				imageData.data[index + 1] = colour.g;
-				imageData.data[index + 2] = colour.b;
-				imageData.data[index + 3] = colour.a;
+define("widget/canvas", ["image/rgba", "lib/class", "widget/view"], (function(RGB, Class, View) {
+	var Canvas = Class({
+		_activeTool: null,
+		base: View,
+		init: function(container) {
+			this.base.init.call(this, container)
+			this._context.canvas.addEventListener("mousedown", $.proxy(this._onMouseDown, this), false)
+			this._context.canvas.addEventListener("mousemove", $.proxy(this._onMouseMove, this), false)
+			this._context.canvas.addEventListener("mouseup", $.proxy(this._onMouseUp, this), false)
+			// TODO: when the mouse moves outside of the canvas, it should cancel()
+		},
+		draw: function() {
+			this.base.draw.call(this)
+			if (this._zoom > 2) {
+				this.drawGrid()
 			}
-		}
-	};
+		},
+		drawGrid: function() {
+			this._context.strokeStyle = this._bgColour
 
-	this.setZoom = function(zoom) {
-		if (self.zoom != zoom) {
-			self.zoom = zoom;
-			self.draw();
+			this._context.scale(1/this._zoom, 1/this._zoom)
+			var BATCH_SIZE = 25
+			,   batchCount = 0
+			this._context.beginPath()
+			for (var i = 1; i < this._image.height; i++) {
+				this._context.moveTo(0, i * this._zoom)
+				this._context.lineTo(this._image.width * this._zoom, i * this._zoom)
+				batchCount++
+				if (batchCount >= BATCH_SIZE) {
+					this._context.stroke();
+					batchCount = 0
+					this._context.beginPath()
+				}
+			}
+			for (var i = 1; i < this._image.width; i++) {
+				this._context.moveTo(i * this._zoom, 0)
+				this._context.lineTo(i * this._zoom, this._image.height * this._zoom)
+				batchCount++
+				if (batchCount >= BATCH_SIZE) {
+					this._context.stroke();
+					batchCount = 0
+					this._context.beginPath()
+				}
+			}
+			this._context.stroke();
+		},
+		setTool: function(tool) {
+			if (null !== this._activeTool) {
+				$(this._activeTool).unbind("change")
+			}
+			this._activeTool = tool
+			$(this._activeTool).bind("change", $.proxy(function(event, callback) {
+				this._image.modifySketchpad(callback)
+				this.draw()
+			}, this))
+			$(this._activeTool).bind("clear", $.proxy(function(event) {
+				this._image.clearSketchpad()
+			}, this))
+			$(this._activeTool).bind("commit", $.proxy(function(event) {
+				this._image.commitSketchpad()
+			}, this))
+		},
+		_onMouseDown: function(event) {
+			var position = this._getPixelIndex(event)
+			if (null === position) {
+				return
+			}
+			if(event.buttons === 2) {
+				this._activeTool.cancel()
+			}
+			this._activeTool.down(position)
+		},
+		_onMouseMove: function(event) {
+			var position = this._getPixelIndex(event)
+			if (null === position) {
+				return
+			}
+			this._activeTool.move(position)
+		},
+		_onMouseUp: function(event) {
+			var position = this._getPixelIndex(event)
+			if (null === position) {
+				return
+			}
+			this._activeTool.up(position)
 		}
-	};
+	})
 
-	window.onresize = this.resize;
-	this.resize();
-}
+	return Canvas
+}))

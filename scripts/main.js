@@ -1,6 +1,6 @@
 require(["widget/canvas", "widget/toolbar", "widget/view", "widget/zoom", "image/gifimage",
-		"tool/pencil"],
-		function(Canvas, Toolbar, View, ZoomWidget, GIFImage, Pencil) {
+		"tool/fill", "tool/line", "tool/pencil", "lib/queue"],
+		function(Canvas, Toolbar, View, ZoomWidget, GIFImage, FloodFill, Line, Pencil, Queue) {
 	var canvas = new Canvas($("#content .wrapper"))
 	,   preview = new View($("#preview"))
 	,   zoom = new ZoomWidget($("#zoomer"))
@@ -66,4 +66,6 @@ require(["widget/canvas", "widget/toolbar", "widget/view", "widget/zoom", "image
 		canvas.setTool(value)
 	})
 	toolbar.createButton(Pencil, "images/pencil.png").click()
+	toolbar.createButton(Line, "images/line.png")
+	toolbar.createButton(FloodFill, "images/paintcan.png")
 })
